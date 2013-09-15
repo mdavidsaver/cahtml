@@ -110,6 +110,13 @@ elif MODE=='MONITOR':
 else:
     raise ImportError("django setting CAJOP has invalid value '%s'"%MODE)
 
+def expandName(context, pv):
+    T = template.Template(pv)
+    context.push()
+    pv = T.render(context)
+    context.pop()
+    return pv.encode('ascii')
+
 def getPV(pv, dtype=None, **kws):
     if not pv:
         raise template.TemplateSyntaxError("PV name can't be %s"%pv)
@@ -140,30 +147,30 @@ def getPV(pv, dtype=None, **kws):
     return PV
 
 # Fetch the value and render to a string
-@register.simple_tag
-def caget(pv, **kws):
-    pv = pv.encode('ascii')
+@register.simple_tag(takes_context=True)
+def caget(context, pv, **kws):
+    pv = expandName(context, pv)
     val = getPV(pv, **kws)
     if val.ok and getattr(val, 'severity', 1)==0:
         return val.val
     else:
         return '%s: %s'%(val.sevr, val.val)
 
-@register.simple_tag
-def caspan(pv, default=u'No Conn', *args, **kws):
-    pv = pv.encode('ascii')
+@register.simple_tag(takes_context=True)
+def caspan(context, pv, default=u'No Conn', *args, **kws):
+    pv = expandName(context, pv)
     kws.setdefault('dtype', 'STRING') # let the server handle formatting
     val = getPV(pv, **kws)
     return ss.SafeUnicode(u'<span class="ca%s">%s</span>'%(val.sevr, val.val))
 
-@register.assignment_tag
-def caval(pv, **kws):
-    pv = pv.encode('ascii')
+@register.assignment_tag(takes_context=True)
+def caval(context, pv, **kws):
+    pv = expandName(context, pv)
     return getPV(pv, **kws)
 
-@register.assignment_tag
-def cameta(pv, **kws):
-    pv = pv.encode('ascii')
+@register.assignment_tag(takes_context=True)
+def cameta(context, pv, **kws):
+    pv = expandName(context, pv)
     if DBE_PROP:
         kws.setdefault('events', ca.DBE_PROPERTY)
     kws.setdefault('format', 'CTRL')
