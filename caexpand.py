@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import logging, re
+import logging, re, os, sys
 
 from optparse import OptionParser
 
@@ -122,20 +122,34 @@ def main():
         if K:
             M[K] = V
 
-    S={'CAJ_OP':'GET',
-       'CAJ_TIMEOUT':opts.timeout,
-       'CAJ_USE_DBE_PROP':opts.useprop,
-       'INSTALLED_APPS':['cajango'],
-       'TEMPLATE_DIRS':['.'],
-       'TEMPLATE_DEBUG':True,
-       }
-    if opts.period>0:
-        S['CAJ_OP'] = 'MONITOR'
-        if opts.period<=opts.timeout:
-            opts.timeout = opts.period/2.0
-            _L.warn('timeout must be < period.  Using %f', opts.timeout)
+    if 'DJANGO_SETTINGS_MODULE' not in os.environ:
+        # No user supplied configuration
+        S={'CAJ_OP':'GET',
+           'CAJ_TIMEOUT':opts.timeout,
+           'CAJ_PERIOD':opts.period,
+           'CAJ_USE_DBE_PROP':opts.useprop,
+           'INSTALLED_APPS':['cajango'],
+           'TEMPLATE_DIRS':['.'],
+           'TEMPLATE_DEBUG':True,
+           }
+        if opts.period>0:
+            S['CAJ_OP'] = 'MONITOR'
+        settings.configure(**S)
 
-    settings.configure(**S)
+    else:
+        # validate user config
+        opts.period = settings.CAJ_PERIOD
+        opts.timeout = settings.CAJ_TIMEOUT
+        if settings.CAJ_OP=='MONITOR' and opts.period<=0:
+            opts.period = 60.0
+            _L.warn('Using default MONITOR period of %f sec', opts.period)
+        if 'cajango' not in settings.INSTALLED_APPS:
+            _L.error('custom configuration must include \'cajango\' in INSTALL_APPS')
+            sys.exit(1)
+
+    if opts.period<=opts.timeout:
+        opts.timeout = opts.period/2.0
+        _L.warn('timeout must be < period.  Using %f', opts.timeout)
 
     files = filter(lambda a:a, map(splitFile, files))
 
