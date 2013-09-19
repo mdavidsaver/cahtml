@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import logging
+import logging, re
 
 from optparse import OptionParser
 
@@ -30,17 +30,76 @@ def makeParser():
                  help="Do not request DBE_PROPERTY.  Causes problems with CA Gateway")
     return P.parse_args()
 
+# tokenize string.
+# (quoted string, seperator, token)
+_tokstr = re.compile(r'"(.*?)(?<!\\)"|([=,])|([^",=]+)')
+
+def splitMac(s):
+    macs={}
+    key=None
+    needval=False
+    val=None
+
+    for M in _tokstr.finditer(s):
+        Q, S, T = M.groups()
+
+        if Q:
+            Q = re.sub(r'\\(.)', r'\1', Q) # unescape body of quoted string
+
+        if not key:
+            # macro name must be token
+            if not T:
+                raise RuntimeError('expected token at %d of "%s"'%(M.start(), s))
+            key = T
+
+        elif S=='=':
+            # expect a value
+            needval=True
+
+        elif S==',':
+            # end of macro def, store entry
+            macs[key]=val
+            key = val = None
+            needval = False
+
+        elif not S:
+            # value token
+            if not needval:
+                raise RuntimeError('expected seperator at %d of "%s"'%(M.start(), s))
+            if val: # append to existing value 'A=B"C"'
+                val = val + (Q or T)
+            else:
+                val = Q or T
+
+        else:
+            raise RuntimeError('internal error at %d of "%s"'%(M.start(), s))
+
+        macs[key]=val
+
+    return macs
+
+_filesplit=re.compile(r'(?<!\\):')
+
+def splitFile(name):
+    S = _filesplit.split(name, maxsplit=1)
+    name = S[0]
+    macents = None
+    if len(S)>1:
+        macents = splitMac(S[1])
+    return (name, macents)
 
 def expand(files, dict):
     import django.template.loader as loader
     from django.http import HttpRequest
     from django.template.context import RequestContext
-    for F in files:
+    for F, M in files:
         R = HttpRequest()
         R.path = F
         R.method = 'GET'
-        _L.debug('Expand %s', F)
-        print loader.render_to_string(F, {}, RequestContext(R, dict))
+        C = RequestContext(R, dict)
+        C.update(M or {})
+        _L.debug('Expand %s with %s', F, C)
+        print loader.render_to_string(F, {}, C)
 
 def main():
     opts, files = makeParser()
@@ -54,6 +113,7 @@ def main():
         LVL = logging.WARN - 10*opts.verbose
     logging.basicConfig(level=LVL)
 
+    # build global macro dict
     M = {}
     for P in opts.macros:
         K,_,V = P.partition('=')
@@ -76,6 +136,8 @@ def main():
             _L.warn('timeout must be < period.  Using %f', opts.timeout)
 
     settings.configure(**S)
+
+    files = filter(lambda a:a, map(splitFile, files))
 
     _L.info('Initial expansion')
     expand(files, M)

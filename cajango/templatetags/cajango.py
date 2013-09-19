@@ -54,7 +54,6 @@ class CAValueWrap(object):
     def val(self):
         "Print the value as a string"
         V = self.__value
-        print 'val',V
         return ss.EscapeUnicode(unicode(V if V.ok else None))
 
     @property
