@@ -35,10 +35,12 @@ def makeParser():
 _tokstr = re.compile(r'"(.*?)(?<!\\)"|([=,])|([^",=]+)')
 
 def splitMac(s):
+    "Split macro definition string"
     macs={}
     key=None
     needval=False
     val=None
+    print 's',s
 
     for M in _tokstr.finditer(s):
         Q, S, T = M.groups()
@@ -57,6 +59,8 @@ def splitMac(s):
             needval=True
 
         elif S==',':
+            if not key:
+                continue # swallow duplicate commas
             # end of macro def, store entry
             macs[key]=val
             key = val = None
@@ -74,7 +78,13 @@ def splitMac(s):
         else:
             raise RuntimeError('internal error at %d of "%s"'%(M.start(), s))
 
+    # store last definition
+    if not key:
+        pass # trailing comma is allowed
+    elif not needval or val:
         macs[key]=val
+    else:
+        raise RuntimeError('expected token or string before end of input of "%s"'%s)
 
     return macs
 
