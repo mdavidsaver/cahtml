@@ -35,21 +35,26 @@ for N in ['STRING','CHAR','SHORT','LONG','ENUM','FLOAT','DOUBLE']:
 
 anychange = cothread.Event()
 
-class CAValueBase(object):
-    def __init__(self, pv):
-        super(CAValueBase, self).__init__()
-        self.__value = ca.ca_nothing(pv, ECA_DISCONN)
+class CAValueWrap(object):
+    __value = None
+    def __init__(self, val):
+        self.__value = val
 
     @property
-    def value(self):
+    def obj(self):
+        "Access underlying catools value"
         return self.__value
 
     def __getattr__(self, name):
+        "Delegate unknowns to the underlying value"
+        assert name!='__value'
         return getattr(self.__value, name)
 
     @property
     def val(self):
+        "Print the value as a string"
         V = self.__value
+        print 'val',V
         return ss.EscapeUnicode(unicode(V if V.ok else None))
 
     @property
@@ -78,34 +83,38 @@ class CAValueBase(object):
         return self.val
 
 if MODE=='GET':
-    class CAValue(CAValueBase):
+    class CACache(object):
         def __init__(self, pv, **kws):
-            super(CAValue,self).__init__(pv)
-            self.name=u'CAValue("%s",%s)'%(pv, kws)
-            _L.debug('caget %s', repr(self))
+            self.name=u'CACache("%s",%s)'%(pv, kws)
             kws.pop('events',None)
-            self.__value = ca.caget(pv, timeout=TIMO, throw=False, **kws)
+            self.value = ca.caget(pv, timeout=TIMO, throw=False, **kws)
+            _L.debug('caget %s -> %s', self.name, self.value)
+
+    def __str__(self):
+        return self.name
 
 elif MODE=='MONITOR':
-    class CAValue(CAValueBase):
+    class CACache(object):
         def __init__(self, pv, **kws):
-            super(CAValue,self).__init__(pv)
-            self.name=u'CAValue("%s",%s)'%(pv, kws)
-            _L.debug('camonitor %s', repr(self))
+            self.name=u'CACache("%s",%s)'%(pv, kws)
+            _L.debug('camonitor %s', self.name)
             self.__S = ca.camonitor(pv, self.__update, notify_disconnect=True,
                                     **kws)
-            self.__last = ca.ca_nothing(pv, ECA_DISCONN)
+            self.value = ca.ca_nothing(pv, ECA_DISCONN)
 
         def __update(self, val):
-            self.__last = val
+            self.value = val
 
             if not val.ok:
-                _L.debug('monitor disconnect "%s"', repr(self))
+                _L.debug('monitor disconnect "%s"', self.name)
 
             else:
-                _L.debug('monitor update "%s"', repr(self))
+                _L.debug('monitor update "%s"', self.name)
 
             anychange.Signal()
+
+    def __str__(self):
+        return self.name
 
 else:
     raise ImportError("django setting CAJOP has invalid value '%s'"%MODE)
@@ -142,9 +151,10 @@ def getPV(pv, dtype=None, **kws):
     try:
         PV = _pv_cache[K]
     except KeyError:
-        PV = CAValue(pv, **kws)
+        PV = CACache(pv, **kws)
         _pv_cache[K] = PV
-    return PV
+
+    return CAValueWrap(PV.value)
 
 # Fetch the value and render to a string
 @register.simple_tag(takes_context=True)
