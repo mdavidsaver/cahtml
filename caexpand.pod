@@ -1,0 +1,151 @@
+
+=head1 NAME
+
+caexpand - Channel Access aware file template expander
+
+=head1 SYNOPSIS
+
+caexpand [options] filename1[:KEY=VAL,A="B C"] ...
+
+=head1 DESCRIPTION
+
+Expands files using the Django template language.  Includes template tags
+for retrieving data from Channel Access protocol Process Variables (PVs).  See section TAGS
+for a listing.  Additional key/value pairs (macros) are included in the
+Django template context and can be referenced with templates.
+
+This program can be run in two modes: a single pass mode (default),
+and periodic re-expand if any PV changes (see B<-P> option).
+Periodic re-expand uses CA Monitor subscriptions, while single pass uses one-off
+CA get requests.  Hint, instead of specifying a long period (eg. 15 min),
+consider using single pass mode and a cron job.
+
+=head1 OPTIONS
+
+=over 1
+
+=item B<-h>, B<--help>
+Show list of arguments
+
+=item B<-v>, B<--verbose>
+Make more noise.  May be given more than once.
+
+=item B<-q>, B<--quiet>
+Make less noise.  May be given more than once.
+
+=item B<-O> I<DIR>, B<--outdir>=I<DIR>
+The directory into which expanded template files will be written.
+Default is '..'.
+
+=item B<-D> I<KEY=VAL>, B<--define>=I<KEY=VAL>
+Add macro definition for all files.  May be given more than once.
+
+=item B<-P> I<TIME>, B<--period>=I<TIME>
+When period > 0 (seconds), template files are periodically re-expanded if any PV changes.
+
+=item B<-T> I<TIME>, B<--timeout>=I<TIME>
+CA operation timeout (seconds).  Must be less than period (if given).
+
+=item B<--no-dbe-prop>
+Do not request DBE_PROPERTY.  Causes problems with CA Gateway.
+
+=back
+
+=head1 TAGS
+
+Several new Django template tags are defined.
+These tags take a PV name string as an argument.
+For convience this string may contain macro definitions.
+
+Availible dtypes are "STRING", "CHAR", "SHORT", "LONG", "ENUM", "FLOAT", and "DOUBLE".
+
+Severity strings as "", "Minor", "Major", "Invalid", "Unknown", and "Disconnected".
+"Unknown" for severities greater than 3, and "Disconnected" when the PV is not connected.
+
+B<caget> expands to a string in the format "%(VAL)s" when alarm severity is NO_ALARM,
+and prefixed with the alarm severity when otherwise "%(SEVR)s: %(VAL)s".
+
+ {% caget "pvname" %}
+ {% caget "pv{{ macro }}" %}
+ {% caget "pvname" dtype="STRING" %}
+
+B<caspan> expands to an HTML span tag with a CSS class based on the severity
+C<E<lt>span class="caSevr%(SEVR)d"E<gt>%(VAL)sE<lt>/spanE<gt>>.
+
+ {% caspan "pvname" %}
+ {% caspan "pv{{ macro }}" %}
+ {% caspan "pvname" dtype="STRING" %}
+
+B<caval> is meant to be assigned to a variable.
+This variable will refer to a value object having the following attributes:
+
+ {% caval "pvname" as var1 %}
+ {% caval "pv{{ macro }}" as var1 %}
+ {% caval "pvname" dtype="STRING" as var1 %}
+
+=over 1
+
+=item B<val>
+The value as a string in the format of the B<caget> tag.
+
+ {{ var1.val }}
+
+=item B<sevr>
+The severity as a string with "" for NO_ALARM, and "Disconnected" when the PV is not available.
+
+ {{ var1.sevr }}
+
+=item B<time>
+PV timestamp as a Python datetime object.  This can be expanded to a string with the standard B<date> filter.
+
+ {{ var1.time|date:"r" }}
+
+=item B<span>
+A string in the format of the B<caspan> tag.
+
+ {{ var1.span }}
+
+=back
+
+B<cameta> is also meant to be assigned.
+There object referred is similar to the B<caval> with the addition of
+attributes with the CA meta-data.  Also, in periodic re-expand mode
+this will B<not> subscribe to value or alarm changes.  It does
+subscribe to property changes (I<DBE_PROPERTY>) unless the B<--no-dbe-prop>
+option is given, in  which case it never updates.
+
+Additional attributes:
+
+=over 1
+
+=item B<units> FLOAT or DOUBLE only.
+
+=item B<precision> FLOAT or DOUBLE only.
+
+=item B<upper_disp_limit> All numeric types.
+
+=item B<lower_disp_limit> All numeric types.
+
+=item B<upper_alarm_limit> All numeric types.
+
+=item B<lower_alarm_limit> All numeric types.
+
+=item B<upper_warning_limit> All numeric types.
+
+=item B<lower_warning_limit> All numeric types.
+
+=item B<upper_ctrl_limit> All numeric types.
+
+=item B<lower_ctrl_limit> All numeric types.
+
+=item B<enums> ENUM only.
+
+=back
+
+=head1 EXAMPLES
+
+Expand one file with two different macro defintions.
+
+$ caexpand -O /var/www/ca -P 10 -T 5 dev1.html:P=pv:prefix: dev2.htmlP=pv:second:
+
+=cut
