@@ -148,4 +148,16 @@ Expand one file with two different macro defintions.
 
 $ caexpand -O /var/www/ca -P 10 -T 5 dev1.html:P=pv:prefix: dev2.htmlP=pv:second:
 
+=head1 AUTHOR
+
+Michael Davidsaver <mdavidsaver@bnl.gov>
+
+=head1 COPYRIGHT
+
+Copyright 2013 Michael Davidsaver
+
+This program is licensed under the GPL v2.  See LICENSE file for details.
+
 =cut
+
+
