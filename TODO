@@ -1,0 +1,5 @@
+Currently periodic re-expand will rewrite all files
+whenever any PV changes.  It needs to be taught to
+track which PVs are used by which files, then to
+reexpand only those which would be effected by
+a PV change.
