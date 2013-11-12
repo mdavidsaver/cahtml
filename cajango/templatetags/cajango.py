@@ -75,6 +75,14 @@ class CAValueWrap(object):
         self.__value.time = T
         return T
 
+    def span(self):
+        if not self.__value.ok:
+            S = 'Disconnected'
+        else:
+            S = _sevr2name.get(self.__value.severity, 'Unknown')
+        return ss.SafeUnicode(u'<span class="caSevr%s">%s</span>'%
+            (S, self.val))
+
     def __repr__(self):
         return self.name
 
@@ -166,11 +174,11 @@ def caget(context, pv, **kws):
         return '%s: %s'%(val.sevr, val.val)
 
 @register.simple_tag(takes_context=True)
-def caspan(context, pv, default=u'No Conn', *args, **kws):
+def caspan(context, pv, default=u'No Conn', **kws):
     pv = expandName(context, pv)
     kws.setdefault('dtype', 'STRING') # let the server handle formatting
     val = getPV(pv, **kws)
-    return ss.SafeUnicode(u'<span class="ca%s">%s</span>'%(val.sevr, val.val))
+    return val.span()
 
 @register.assignment_tag(takes_context=True)
 def caval(context, pv, **kws):

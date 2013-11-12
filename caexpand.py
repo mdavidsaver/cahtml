@@ -40,7 +40,6 @@ def splitMac(s):
     key=None
     needval=False
     val=None
-    print 's',s
 
     for M in _tokstr.finditer(s):
         Q, S, T = M.groups()
@@ -157,7 +156,7 @@ def main():
             _L.error('custom configuration must include \'cajango\' in INSTALL_APPS')
             sys.exit(1)
 
-    if opts.period<=opts.timeout:
+    if settings.CAJ_OP=='MONITOR' and opts.period<=opts.timeout:
         opts.timeout = opts.period/2.0
         _L.warn('timeout must be < period.  Using %f', opts.timeout)
 
