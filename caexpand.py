@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import logging, re, os, sys
+import os.path
 
 from optparse import OptionParser
 
@@ -97,7 +98,7 @@ def splitFile(name):
         macents = splitMac(S[1])
     return (name, macents)
 
-def expand(files, dict):
+def expand(files, dict, outdir):
     import django.template.loader as loader
     from django.http import HttpRequest
     from django.template.context import RequestContext
@@ -108,7 +109,13 @@ def expand(files, dict):
         C = RequestContext(R, dict)
         C.update(M or {})
         _L.debug('Expand %s with %s', F, C)
-        print loader.render_to_string(F, {}, C)
+        S = loader.render_to_string(F, {}, C)
+
+        OF = os.path.join(outdir, F)
+        out = open(OF+'~', "w")
+        out.write(S)
+        out.close()
+        os.rename(OF+'~', OF)
 
 def main():
     opts, files = makeParser()
@@ -121,6 +128,10 @@ def main():
         # WARN..DEBUG
         LVL = logging.WARN - 10*opts.verbose
     logging.basicConfig(level=LVL)
+
+    if not os.path.isdir(opts.outdir):
+        _L.error("requested output directory %s is not a directory", opts.outdir)
+        sys.exit(1)
 
     # build global macro dict
     M = {}
@@ -162,8 +173,21 @@ def main():
 
     files = filter(lambda a:a, map(splitFile, files))
 
+    # Validate filenames and create output subdirectories if needed
+    for F, CT in files:
+        if os.path.isabs(F):
+            _L.error("Template files must be specified by relative path! %s", F)
+            sys.exit(1)
+        Fdir, Fname = os.path.split(F)
+        if not Fname:
+            _L.error("Template files must be files, not directories! %s", F)
+            sys.exit(1)
+        Foutdir = os.path.join(opts.outdir, Fdir)
+        if not os.path.isdir(Foutdir):
+            os.makedirs(Foutdir)
+
     _L.info('Initial expansion')
-    expand(files, M)
+    expand(files, M, opts.outdir)
     _L.info('Initial expansion complete')
 
     if opts.period>0:
@@ -173,7 +197,7 @@ def main():
             while True:
                 caj.anychange.Wait()
                 _L.info('re-expansion')
-                expand(files, M)
+                expand(files, M, opts.outdir)
                 _L.info('re-expansion complete')
                 cothread.Sleep(opts.period)
         except KeyboardInterrupt:
