@@ -1,0 +1,24 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+  <title>NSLS2 SR Overview</title>
+  <meta content="text/html; charset=UTF-8" http-equiv="Content-Type">
+  <meta content="application/xhtml+xml; charset=UTF-8" http-equiv="Content-Type">
+  <meta content="text/css" http-equiv="Content-Style-Type">
+  <meta http-equiv="refresh" content="60">
+{% load cajango %}
+</head>
+<body>
+<p>Beam Current {% caget "SR:C03-BI{DCCT:1}I:Total-I" %}</p>
+<p>Beam Lifetime {% caget "SR:C03-BI{DCCT:1}Lifetime-I" %}</p>
+<p>Beam Lifetime hour {% caget "SR-BI{}BPM_lifetimeAve-I" %}</p>
+<p>Daily {% caget "SR:C03-BI{DCCT:1}Dosage:1d-I" %}</p>
+<p><img src="sr-overview.png" alt="Lifetime and Current history"></p>
+<p>Message from Operations:</p>
+<p>{% caspan "OP{1}Message" dtype="CHAR_STR" %}</p>
+<p>{% caspan "OP{2}Message" dtype="CHAR_STR" %}</p>
+<p>{% caspan "OP{3}Message" dtype="CHAR_STR" %}</p>
+<p>{% caspan "OP{4}Message" dtype="CHAR_STR" %}</p>
+<p>Time: {% caget "OP-CT{IOC:opsum}:TOD" %}</p>
+</body>
+</html>
