@@ -30,7 +30,7 @@ _name2fmt = {
 _sevr2name = {0:'', 1:'Minor', 2:'Major', 3:'Invalid'}
 
 _name2type = {}
-for N in ['STRING','CHAR','SHORT','LONG','ENUM','FLOAT','DOUBLE']:
+for N in ['STRING','CHAR','SHORT','LONG','ENUM','FLOAT','DOUBLE','CHAR_STR']:
     _name2type[N] = getattr(ca, 'DBR_'+N)
 
 anychange = cothread.Event()
@@ -133,7 +133,7 @@ def expandName(context, pv):
     context.pop()
     return pv.encode('ascii')
 
-def getPV(pv, dtype=None, **kws):
+def getPV(pv, **kws):
     if not pv:
         raise template.TemplateSyntaxError("PV name can't be %s"%pv)
 
@@ -166,6 +166,7 @@ def getPV(pv, dtype=None, **kws):
 # Fetch the value and render to a string
 @register.simple_tag(takes_context=True)
 def caget(context, pv, **kws):
+    _L.debug('caget(ctxt, %s, %s)', pv, kws)
     pv = expandName(context, pv)
     val = getPV(pv, **kws)
     if val.ok and getattr(val, 'severity', 1)==0:
@@ -175,6 +176,7 @@ def caget(context, pv, **kws):
 
 @register.simple_tag(takes_context=True)
 def caspan(context, pv, default=u'No Conn', **kws):
+    _L.debug('caspan(ctxt, %s, default=%s, %s)', pv, default, kws)
     pv = expandName(context, pv)
     kws.setdefault('dtype', 'STRING') # let the server handle formatting
     val = getPV(pv, **kws)
@@ -182,11 +184,13 @@ def caspan(context, pv, default=u'No Conn', **kws):
 
 @register.assignment_tag(takes_context=True)
 def caval(context, pv, **kws):
+    _L.debug('caval(ctxt, %s, %s)', pv, kws)
     pv = expandName(context, pv)
     return getPV(pv, **kws)
 
 @register.assignment_tag(takes_context=True)
 def cameta(context, pv, **kws):
+    _L.debug('cameta(ctxt, %s, %s)', pv, kws)
     pv = expandName(context, pv)
     if DBE_PROP:
         kws.setdefault('events', ca.DBE_PROPERTY)
