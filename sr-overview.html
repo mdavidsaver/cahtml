@@ -7,12 +7,14 @@
   <meta content="text/css" http-equiv="Content-Style-Type">
   <meta http-equiv="refresh" content="60">
 {% load cajango %}
+{% caval "SR:C03-BI{DCCT:1}I:Total-I" dtype="STRING" as srcurrent %}
+{% cameta "SR:C03-BI{DCCT:1}I:Total-I" as srcurrentmeta %}
 </head>
 <body>
-<p>Beam Current {% caget "SR:C03-BI{DCCT:1}I:Total-I" %}</p>
-<p>Beam Lifetime {% caget "SR:C03-BI{DCCT:1}Lifetime-I" %}</p>
-<p>Beam Lifetime hour {% caget "SR-BI{}BPM_lifetimeAve-I" %}</p>
-<p>Daily {% caget "SR:C03-BI{DCCT:1}Dosage:1d-I" %}</p>
+<p>Beam Current {{ srcurrent.val }} {{ srcurrentmeta.units }}</p>
+<p>Beam Lifetime {% caget "SR:C03-BI{DCCT:1}Lifetime-I" dtype="STRING" %}</p>
+<p>Beam Lifetime hour {% caget "SR-BI{}BPM_lifetimeAve-I" dtype="STRING" %}</p>
+<p>Daily {% caget "SR:C03-BI{DCCT:1}Dosage:1d-I" dtype="STRING" %}</p>
 <p><img src="sr-overview.png" alt="Lifetime and Current history"></p>
 <p>Message from Operations:</p>
 <p>{% caspan "OP{1}Message" dtype="CHAR_STR" %}</p>
